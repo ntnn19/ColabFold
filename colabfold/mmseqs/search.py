@@ -135,7 +135,7 @@ def mmseqs_search_monomer(
     else:
         logger.info(f"Skipping {uniref_db} search because uniref.a3m already exists")
 
-    if use_env and not base.joinpath("bfd.mgnify30.metaeuk30.smag30.a3m").with_suffix('.a3m.dbtype').exists():
+    if use_env:
         run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(metagenomic_db), base.joinpath("res_env"),
                             base.joinpath("tmp3"), "--threads", str(threads)] + search_param)
         run_mmseqs(mmseqs, ["expandaln", base.joinpath("prof_res"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix1}"), base.joinpath("res_env"),
@@ -172,7 +172,6 @@ def mmseqs_search_monomer(
     elif use_templates:
         logger.info(f"Skipping {template_db} search because res_pdb.m8 already exists")
 
-    if use_env:
         run_mmseqs(mmseqs, ["mergedbs", base.joinpath("qdb"), base.joinpath("final.a3m"), base.joinpath("uniref.a3m"), base.joinpath("bfd.mgnify30.metaeuk30.smag30.a3m")])
         run_mmseqs(mmseqs, ["rmdb", base.joinpath("bfd.mgnify30.metaeuk30.smag30.a3m")])
         run_mmseqs(mmseqs, ["rmdb", base.joinpath("uniref.a3m")])
@@ -180,9 +179,24 @@ def mmseqs_search_monomer(
         run_mmseqs(mmseqs, ["mvdb", base.joinpath("uniref.a3m"), base.joinpath("final.a3m")])
         run_mmseqs(mmseqs, ["rmdb", base.joinpath("uniref.a3m")])
 
-    if unpack:
-        run_mmseqs(mmseqs, ["unpackdb", base.joinpath("final.a3m"), base.joinpath("."), "--unpack-name-mode", "0", "--unpack-suffix", ".a3m"])
-        run_mmseqs(mmseqs, ["rmdb", base.joinpath("final.a3m")])
+    if use_templates:
+        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(template_db), base.joinpath("res_pdb"),
+                            base.joinpath("tmp2"), "--db-load-mode", str(db_load_mode), "--threads", str(threads), "-s", "7.5", "-a", "-e", "0.1"])
+        run_mmseqs(mmseqs, ["convertalis", base.joinpath("prof_res"), dbbase.joinpath(f"{template_db}{dbSuffix3}"), base.joinpath("res_pdb"),
+                            base.joinpath(f"{template_db}"), "--format-output",
+                            "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,cigar",
+                            "--db-output", "1",
+                            "--db-load-mode", str(db_load_mode), "--threads", str(threads)])
+        run_mmseqs(mmseqs, ["unpackdb", base.joinpath(f"{template_db}"), base.joinpath("."), "--unpack-name-mode", "0", "--unpack-suffix", ".m8"])
+        run_mmseqs(mmseqs, ["rmdb", base.joinpath("res_pdb")])
+        run_mmseqs(mmseqs, ["rmdb", base.joinpath(f"{template_db}")])
+
+    run_mmseqs(mmseqs, ["unpackdb", base.joinpath("final.a3m"), base.joinpath("."), "--unpack-name-mode", "0", "--unpack-suffix", ".a3m"])
+    run_mmseqs(mmseqs, ["rmdb", base.joinpath("final.a3m")])
+    run_mmseqs(mmseqs, ["rmdb", base.joinpath("uniref.a3m")])
+    run_mmseqs(mmseqs, ["rmdb", base.joinpath("res")])
+    # @formatter:on
+    # fmt: on
 
         if use_templates:
             run_mmseqs(mmseqs, ["unpackdb", base.joinpath("res_pdb.m8"), base.joinpath("."), "--unpack-name-mode", "0", "--unpack-suffix", ".m8"])
@@ -303,14 +317,10 @@ def main():
         default=Path("colabfold_envdb_202108_db"),
         help="Environmental database",
     )
-    parser.add_argument("--db4", type=Path, default=Path("spire_ctg10_2401_db"), help="Environmental pairing database")
 
     # poor man's boolean arguments
     parser.add_argument(
         "--use-env", type=int, default=1, choices=[0, 1], help="Use --db3"
-    )
-    parser.add_argument(
-        "--use-env-pairing", type=int, default=0, choices=[0, 1], help="Use --db4"
     )
     parser.add_argument(
         "--use-templates", type=int, default=0, choices=[0, 1], help="Use --db2"
@@ -365,9 +375,6 @@ def main():
         type=int,
         default=0,
         help="Database preload mode 0: auto, 1: fread, 2: mmap, 3: mmap+touch",
-    )
-    parser.add_argument(
-        "--unpack", type=int, default=1, choices=[0, 1], help="Unpack results to loose files or keep MMseqs2 databases."
     )
     parser.add_argument(
         "--threads", type=int, default=64, help="Number of threads to use."
@@ -518,20 +525,17 @@ def main():
                 args.base.joinpath(f"{safe_filename(raw_jobname)}.a3m"),
             )
 
-        # rename m8 files
-        if args.use_templates:
-            id = 0
-            for raw_jobname, query_sequences, query_seqs_cardinality in queries_unique:
-                with args.base.joinpath(f"{safe_filename(raw_jobname)}_{args.db2}.m8").open(
-                    "w"
-                ) as f:
-                    for _ in range(len(query_seqs_cardinality)):
-                        with args.base.joinpath(f"{id}.m8").open("r") as g:
-                            f.write(g.read())
-                        os.remove(args.base.joinpath(f"{id}.m8"))
-                        id += 1
-        run_mmseqs(args.mmseqs, ["rmdb", args.base.joinpath("qdb")])
-        run_mmseqs(args.mmseqs, ["rmdb", args.base.joinpath("qdb_h")])
+    if args.use_templates:
+        id = 0
+        for raw_jobname, query_sequences, query_seqs_cardinality in queries_unique:
+            with args.base.joinpath(f"{safe_filename(raw_jobname)}_{args.db2}.m8").open(
+                "w"
+            ) as f:
+                for _ in range(len(query_seqs_cardinality)):
+                    with args.base.joinpath(f"{id}.m8").open("r") as g:
+                        f.write(g.read())
+                    os.remove(args.base.joinpath(f"{id}.m8"))
+                    id += 1
 
     query_file.unlink()
 
