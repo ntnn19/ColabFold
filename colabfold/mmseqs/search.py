@@ -191,6 +191,18 @@ def mmseqs_search_monomer(
         run_mmseqs(mmseqs, ["rmdb", base.joinpath("res_pdb")])
         run_mmseqs(mmseqs, ["rmdb", base.joinpath(f"{template_db}")])
 
+    if use_templates:
+        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(template_db), base.joinpath("res_pdb"),
+                            base.joinpath("tmp2"), "--db-load-mode", str(db_load_mode), "--threads", str(threads), "-s", "7.5", "-a", "-e", "0.1"])
+        run_mmseqs(mmseqs, ["convertalis", base.joinpath("prof_res"), dbbase.joinpath(f"{template_db}{dbSuffix3}"), base.joinpath("res_pdb"),
+                            base.joinpath(f"{template_db}"), "--format-output",
+                            "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,cigar",
+                            "--db-output", "1",
+                            "--db-load-mode", str(db_load_mode), "--threads", str(threads)])
+        run_mmseqs(mmseqs, ["unpackdb", base.joinpath(f"{template_db}"), base.joinpath("."), "--unpack-name-mode", "0", "--unpack-suffix", ".m8"])
+        run_mmseqs(mmseqs, ["rmdb", base.joinpath("res_pdb")])
+        run_mmseqs(mmseqs, ["rmdb", base.joinpath(f"{template_db}")])
+
     run_mmseqs(mmseqs, ["unpackdb", base.joinpath("final.a3m"), base.joinpath("."), "--unpack-name-mode", "0", "--unpack-suffix", ".a3m"])
     run_mmseqs(mmseqs, ["rmdb", base.joinpath("final.a3m")])
     run_mmseqs(mmseqs, ["rmdb", base.joinpath("uniref.a3m")])
