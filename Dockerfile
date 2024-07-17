@@ -2,7 +2,7 @@ ARG CUDA_VERSION=11.8.0
 ARG COLABFOLD_VERSION=1.5.5
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
 
-RUN apt-get update && apt-get install -y wget cuda-nvcc-$(echo $CUDA_VERSION | cut -d'.' -f1,2 | tr '.' '-') --no-install-recommends --no-install-suggests && rm -rf /var/lib/apt/lists/* && \
+RUN apt-get update && apt-get install -y wget parallel cuda-nvcc-$(echo $CUDA_VERSION | cut -d'.' -f1,2 | tr '.' '-') --no-install-recommends --no-install-suggests && rm -rf /var/lib/apt/lists/* && \
     wget -qnc https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh && \
     bash Mambaforge-Linux-x86_64.sh -bfp /usr/local && \
     conda config --set auto_update_conda false && \
