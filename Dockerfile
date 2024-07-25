@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y wget parallel cuda-nvcc-$(echo $CUDA_VE
     bash Mambaforge-Linux-x86_64.sh -bfp /usr/local && \
     conda config --set auto_update_conda false && \
     rm -f Mambaforge-Linux-x86_64.sh && \
-    CONDA_OVERRIDE_CUDA=$(echo $CUDA_VERSION | cut -d'.' -f1,2) mamba create -y -n colabfold -c conda-forge -c bioconda colabfold=$COLABFOLD_VERSION jaxlib==*=cuda* && \
+    conda config --add channels https://conda.anaconda.org/ntnn && conda config --show channels && \
+    CONDA_OVERRIDE_CUDA=$(echo $CUDA_VERSION | cut -d'.' -f1,2) mamba create -y -n colabfold -c ntnn -c conda-forge -c bioconda ntnn::colabfold jaxlib==*=cuda* && \
     mamba clean -afy
 
 ENV PATH /usr/local/envs/colabfold/bin:$PATH
