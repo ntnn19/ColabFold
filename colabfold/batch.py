@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import os
@@ -373,6 +374,9 @@ def predict_structure(
                     # TODO: add pad_input_mulitmer()
                     input_features = feature_dict
                     input_features["asym_id"] = input_features["asym_id"] - input_features["asym_id"][...,0]
+                    input_features['chain_num'] = input_features["asym_id"].max() + 1
+                    model_runner.chain_num = input_features['chain_num']
+
             else:
                 if model_num == 0:
                     input_features = model_runner.process_features(feature_dict, random_seed=seed)
@@ -489,6 +493,10 @@ def predict_structure(
                     if k in conf[-1]: scores[k] = np.around(conf[-1][k], 2).item()
                   del pae
                 del plddt
+
+                if "chain_iptm" in result:
+                    scores.update({"chain_iptm": np.around(result["chain_iptm"].astype(float), 4).tolist()})
+                    scores.update({"ptm_matrix": np.around(result["ptm_matrix"].astype(float), 4).tolist()})
                 json.dump(scores, handle)
 
             del result, unrelaxed_protein
