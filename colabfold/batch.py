@@ -489,6 +489,10 @@ def predict_structure(
                     if k in conf[-1]: scores[k] = np.around(conf[-1][k], 2).item()
                   del pae
                 del plddt
+
+                if "chain_iptm" in result:
+                    scores.update({"chain_iptm": np.around(result["chain_iptm"].astype(float), 4).tolist()})
+                    scores.update({"ptm_matrix": np.around(result["ptm_matrix"].astype(float), 4).tolist()})
                 json.dump(scores, handle)
 
             del result, unrelaxed_protein
@@ -731,7 +735,8 @@ def get_msa_and_templates(
 ]:
     from colabfold.colabfold import run_mmseqs2
 
-    use_env = msa_mode == "mmseqs2_uniref_env"
+    use_env = msa_mode == "mmseqs2_uniref_env" or msa_mode == "mmseqs2_uniref_env_envpair"
+    use_envpair = msa_mode == "mmseqs2_uniref_env_envpair"
     if isinstance(query_sequences, str): query_sequences = [query_sequences]
 
     # remove duplicates before searching
@@ -751,6 +756,12 @@ def get_msa_and_templates(
     if use_templates:
         # Skip template search when custom_template_path is provided
         if custom_template_path is not None:
+            if msa_mode == "single_sequence":
+                a3m_lines = []
+                num = 101
+                for i, seq in enumerate(query_seqs_unique):
+                    a3m_lines.append(f">{num + i}\n{seq}")
+
             if a3m_lines is None:
                 a3m_lines_mmseqs2 = run_mmseqs2(
                     query_seqs_unique,
@@ -834,7 +845,7 @@ def get_msa_and_templates(
             paired_a3m_lines = run_mmseqs2(
                 query_seqs_unique,
                 str(result_dir.joinpath(jobname)),
-                use_env,
+                use_envpair,
                 use_pairing=True,
                 pairing_strategy=pairing_strategy,
                 host_url=host_url,
@@ -1117,11 +1128,11 @@ def unserialize_msa(
                 curr_seq_len += 1
             seqs_line.append(paired_seq)
 
-        # is sequence is paired add them to output
+        # if sequence is paired add them to output
         if (
             not is_single_protein
             and not is_homooligomer
-            and sum(has_amino_acid) == len(query_seq_len)
+            and sum(has_amino_acid) > 1 # at least 2 sequences are paired
         ):
             header_no_faster = header.replace(">", "")
             header_no_faster_split = header_no_faster.split("\t")
@@ -1298,6 +1309,7 @@ def run(
 
     # backward-compatibility with old options
     old_names = {"MMseqs2 (UniRef+Environmental)":"mmseqs2_uniref_env",
+                 "MMseqs2 (UniRef+Environmental+Env. Pairing)":"mmseqs2_uniref_env_envpair",
                  "MMseqs2 (UniRef only)":"mmseqs2_uniref",
                  "unpaired+paired":"unpaired_paired"}
     msa_mode   = old_names.get(msa_mode,msa_mode)
@@ -1694,6 +1706,7 @@ def main():
         default="mmseqs2_uniref_env",
         choices=[
             "mmseqs2_uniref_env",
+            "mmseqs2_uniref_env_envpair",
             "mmseqs2_uniref",
             "single_sequence",
         ],
