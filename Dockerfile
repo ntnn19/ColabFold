@@ -3,14 +3,15 @@ ARG COLABFOLD_VERSION=1.5.9
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
 
 
-RUN apt-get update && apt-get install -y wget git cmake make g++ parallel cuda-nvcc-$(echo $CUDA_VERSION | cut -d'.' -f1,2 | tr '.' '-') --no-install-recommends --no-install-suggests && rm -rf /var/lib/apt/lists/* && \
-    wget -qnc https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh && \
-    bash Mambaforge-Linux-x86_64.sh -bfp /usr/local && \
-    conda config --set auto_update_conda false && \
-    rm -f Mambaforge-Linux-x86_64.sh
+RUN apt-get update 
+RUN apt-get install -y wget git cmake make g++ parallel rsync cuda-nvcc-$(echo $CUDA_VERSION | cut -d'.' -f1,2 | tr '.' '-') --no-install-recommends --no-install-suggests && rm -rf /var/lib/apt/lists/*
+RUN wget  https://github.com/conda-forge/miniforge/releases/download/24.11.3-0/Miniforge3-Linux-x86_64.sh && \
+    bash Miniforge3-Linux-x86_64.sh -bfp /usr/local
+
+RUN conda config --set auto_update_conda false && rm -f Mambaforge-Linux-x86_64.sh
 
 RUN conda config --add channels https://conda.anaconda.org/ntnn9891 && conda config --show channels && \
-    CONDA_OVERRIDE_CUDA=$(echo $CUDA_VERSION | cut -d'.' -f1,2) mamba create -y -n colabfold -c ntnn9891 -c conda-forge -c bioconda ntnn9891::colabfold==1.5.9 jaxlib==*=cuda* && \
+    CONDA_OVERRIDE_CUDA=$(echo $CUDA_VERSION | cut -d'.' -f1,2) mamba create -y -n colabfold -c ntnn9891 -c conda-forge -c bioconda ntnn9891::colabfold jaxlib==*=cuda* && \
     mamba clean -afy
 
 
